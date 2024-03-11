@@ -105,6 +105,7 @@ export class AwsHelper {
         } catch (e: any) {
 
             try {
+                console.log(request)
                 const resp = await this.getMergedUrl(request)
                 console.log(resp)
                 if (resp.data && resp.data.mergedUrl){

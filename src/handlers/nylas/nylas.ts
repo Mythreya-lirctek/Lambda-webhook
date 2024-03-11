@@ -21,12 +21,12 @@ exports.handler = async function (event: APIGatewayProxyEvent) {
             const s3 = new AWS.SQS();
             const params = {
                 MessageBody: JSON.stringify(requestBody),
-                QueueUrl: ConfigService.configs.nylas.queueUrl
+                QueueUrl: 'https://sqs.us-west-2.amazonaws.com/489119502650/nylas'
             };
             await sqs.sendMessage(params).promise();
-            return createResponse(200, { message : 'Success' })
+            return { statusCode: 200 };
         } else {
-            return createResponse(404, 'Not Found')
+            return { statusCode: 200 };
         }
 
     } catch(ex: any) {

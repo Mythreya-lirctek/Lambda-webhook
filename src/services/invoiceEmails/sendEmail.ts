@@ -23,7 +23,6 @@ export class SendEmail {
     public async processDocumentsAndSendEmail(request: any): Promise<any> {
 
         const resultData = [];
-        let attachments = [] as any;
 
         let companyId: any = request[0].Payload.body.companyId;
 
@@ -42,39 +41,137 @@ export class SendEmail {
         const fileName = `Invoices-${moment().format('MMDDYYYYhhmma')}.zip`;
         const filePath = path.join(tempDirectory, fileName);
 
-        const zip = new AdmZip();
+        const isSingleEmail = request[0].Payload.body.isSingleEmail ? request[0].Payload.body.isSingleEmail : 1
+        if (isSingleEmail === 1){
 
-        for (let i = 0; i < request.length; i++) {
+            let attachments: any = [];
+            for (let i = 0; i < request.length; i++) {
+                const invoice = request[i].Payload.body
+                allInvoices.push(invoice)
 
-            const invoice = request[i].Payload.body
-            allInvoices.push(invoice)
-            invoice.batchLog.errors = [];
-            const errors = [];
-            for (const item of invoice.files) {
-                const doc = await this.awsHelper.getDocument(item, invoice)
-                if (doc.url) {
-                    zip.addLocalFile(doc.url);
+                if (invoice.documents.length === 0) {
+                    failedInvoice.push(invoice)
+                    failedBlobs.push(invoice.errors)
+                }
+
+                const localFilePath = [];
+                for (const item of invoice.files) {
+                    const doc = await this.awsHelper.getDocument(item, invoice)
+                    if (doc.url) {
+                        localFilePath.push(doc)
+                        const bitmap = fs.readFileSync(doc.url);
+                        attachments.push({
+                            content: Buffer.from(bitmap).toString('base64'),
+                            name: doc.name,
+                            type: 'application/pdf'
+                        });
+
+                        successInvoice.push(invoice)
+                        successBlobs.push(invoice.batchLog)
+                    } else {
+                        failedInvoice.push(invoice)
+                        failedBlobs.push(invoice.errors)
+                    }
+                }
+
+                console.log(attachments.length, 'Length')
+                const subject = invoice.refNumber ? `Reference# : ${invoice.refNumber}` : `Reference# : -`
+                if (emails.length > 0 && attachments.length > 0){
+                    for(const email of emails){
+                        const result = await this.sendEmail(email, fromEmail, 'invoice', body, attachments, subject)
+                        console.log(result)
+                        if (result.response){
+                            resultData.push({email, result : result.response})
+                        } else {
+
+                            console.log(localFilePath)
+                            if (localFilePath.length === 1){
+
+                                const fileContent = fs.readFileSync(localFilePath[0].url);
+
+                                const key = `company/${companyId}/workOrder/${localFilePath[0].name}.pdf`;
+                                const s3 = new AWS.S3();
+                                await s3.upload({
+                                    Bucket: ConfigService.configs.aws.bucket,
+                                    Key: key,
+                                    Body: fileContent,
+                                    ContentType: 'application/pdf'
+                                }).promise();
+
+                                const params2 = {
+                                    Bucket: ConfigService.configs.aws.bucket,
+                                    Key: key, // The key of the object you want to access
+                                    Expires: 604800, // 7 Days
+                                };
+
+                                const signedUrl = s3.getSignedUrl('getObject', params2);
+                                const newSubject = invoice.refNumber ? `Reference# : ${invoice.refNumber}` : `Reference# : -`
+                                const newBody = `<div><br />Dear Customer,<br />Please click on the following link to download the documents, this link will be expired in 7 days <br /> <br />Download URL<br /> ${signedUrl}<br /> <br /> </div>`
+
+                                const result = await this.sendEmail(email, fromEmail, 'invoice', newBody, null, newSubject)
+                                resultData.push({email, result: result.response})
+
+                            } else {
+
+                                const documentAwsUrl = await this.awsHelper.getDocumentMergeAndPush(invoice.files, invoice)
+                                if (documentAwsUrl.mergedUrl) {
+
+                                    const s3 = new AWS.S3();
+
+                                    const params2 = {
+                                        Bucket: ConfigService.configs.aws.bucket,
+                                        Key: documentAwsUrl.mergedUrl, // The key of the object you want to access
+                                        Expires: 604800, // 7 Days
+                                    };
+
+                                    const signedUrl = s3.getSignedUrl('getObject', params2);
+                                    const newSubject = invoice.refNumber ? `Reference# : ${invoice.refNumber}` : `Reference# : -`
+                                    const newBody = `<div><br />Dear Customer,<br />Please click on the following link to download the documents, this link will be expired in 7 days <br /> <br />Download URL<br /> <a href=${signedUrl}><br /> <br /> </div>`
+
+                                    const result = await this.sendEmail(email, fromEmail, 'invoice', newBody, null, newSubject)
+                                    resultData.push({email, result: result.response})
+
+                                }
+
+                            }
+
+                        }
+                    }
+                    attachments = [];
+                }
+
+            }
+            return await this.updateInvoice(successInvoice, failedInvoice, successBlobs, failedBlobs, resultData);
+
+        } else {
+
+            const zip = new AdmZip();
+
+            for (let i = 0; i < request.length; i++) {
+
+                const invoice = request[i].Payload.body
+                allInvoices.push(invoice)
+                invoice.batchLog.errors = [];
+                const errors = [];
+                for (const item of invoice.files) {
+                    const doc = await this.awsHelper.getDocument(item, invoice)
+                    if (doc.url) {
+                        zip.addLocalFile(doc.url);
+                    } else {
+                        errors.push(`Failed to Get Document : ${item.name}`)
+                    }
+                }
+                invoice.batchLog.errors.push(errors)
+
+                if (invoice.files.length > 0) {
+                    successInvoice.push(invoice)
+                    successBlobs.push(invoice.batchLog)
                 } else {
-                    errors.push(`Failed to Get Document : ${item.name}`)
+                    failedInvoice.push(invoice)
+                    failedBlobs.push(invoice.errors)
                 }
             }
-            invoice.batchLog.errors.push(errors)
-
-            if (invoice.files.length > 0) {
-                successInvoice.push(invoice)
-                successBlobs.push(invoice.batchLog)
-            } else {
-                failedInvoice.push(invoice)
-                failedBlobs.push(invoice.errors)
-            }
-        }
-        zip.writeZip(filePath)
-
-        const stats = fs.statSync(filePath);
-        const fileSizeInBytes = stats.size
-        const fileSizeInMegaBytes = fileSizeInBytes / (1024 * 1024);
-
-        if (fileSizeInMegaBytes > 7){
+            zip.writeZip(filePath)
 
             const key = `company/${companyId}/workOrder/${fileName}`;
             const s3 = new AWS.S3();
@@ -93,35 +190,13 @@ export class SendEmail {
             };
 
             const signedUrl = s3.getSignedUrl('getObject', params2);
-            const newBody = `<div><br /> ${body}<br /> <br />Document URL<br /> ${signedUrl}<br /> <br />Note<br />This link is valid for 7 Days<br /> </div>`
+            const newBody = `<div><br />Dear Customer,<br />Please click on the following link to download the documents, this link will be expired in 7 days <br /> <br />Download URL<br /> <a href=${signedUrl}><br /> <br /> </div>`
             for (const email of emails) {
                 const result = await this.sendEmail(email, fromEmail, 'invoice', newBody, null, subject)
                 resultData.push({email, result: result.response})
             }
 
             return await this.updateInvoice(successInvoice, failedInvoice, successBlobs, failedBlobs, resultData);
-
-        } else {
-
-            try {
-                const bitmap = fs.readFileSync(filePath);
-                attachments.push({
-                    content: Buffer.from(bitmap).toString('base64'),
-                    name: path.parse(filePath),
-                    type: 'application/zip'
-                });
-
-                for (const email of emails) {
-                    const result = await this.sendEmail(email, fromEmail, 'invoice', body, attachments, subject)
-                    resultData.push({email, result: result.response})
-                }
-
-                return await this.updateInvoice(successInvoice, failedInvoice, successBlobs, failedBlobs, resultData);
-
-            } catch (e) {
-                return await this.updateInvoice([], allInvoices, successBlobs, failedBlobs, {error: e});
-            }
-
         }
 
     }
@@ -235,13 +310,19 @@ export class SendEmail {
                     },
                 };
             }
-            const response = await client.messages.sendTemplate(message);
+            const response: any = await client.messages.sendTemplate(message);
             console.log('Sending Email')
-            return {response, message : 'Email Sent Successfully'};
+            if (response.length > 0){
+                return {response, message : 'Email Sent Successfully'};
+            } else {
+                console.error(response);
+                return { error : 'Failed to Send Message', message : 'Email Sending Failed'};
+            }
+
 
         } catch (err: any) {
             console.error(err);
-            return { error : err.message, message : 'Email Sending Failed'};
+            return { error : 'Failed to Send Message', message : 'Email Sending Failed'};
         }
     }
 

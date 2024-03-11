@@ -12,7 +12,9 @@ module.exports = {
       sendEmail: './src/handlers/invoiceEmails/sendEmail.ts',
       zipFile: './src/handlers/invoiceDownloads/zipFile.ts',
       printInvoice: './src/handlers/invoicePrint/printInvoice.ts',
-      relayPayments: './src/handlers/relayPayments/relayPayments.ts'
+      relayPayments: './src/handlers/relayPayments/relayPayments.ts',
+      truckerTools: './src/handlers/truckerTools/truckerTools.ts',
+      orderFul: './src/handlers/orderful/orderful.ts'
   },
   externals: {
   },

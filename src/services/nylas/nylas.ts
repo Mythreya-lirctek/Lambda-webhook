@@ -22,6 +22,7 @@ export class Nylas{
 
         const requestBody = JSON.parse(request) || {};
         const deltas = requestBody.deltas as any
+        console.log(deltas, 'deltas')
 
         const response = [] as any;
         for (const record of deltas) {
@@ -269,7 +270,7 @@ export class Nylas{
 				${null},
 				${null},
 				${null},
-				${null},
+				${null}
 			)
 		`);
     }
@@ -324,7 +325,7 @@ export class Nylas{
 				${req.threadReplied ? req.threadReplied : null},
 				${req.workOrderId ? req.workOrderId : null},
 				${null},
-				${req.replayMessageId ? req.replayMessageId : null}
+				${req.replayMessageId ? req.replayMessageId : null},
 				${req.isSent ? req.isSent : 1}
 			)
 		`)

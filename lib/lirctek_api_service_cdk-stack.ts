@@ -20,6 +20,7 @@ export class LirctekApiServiceCdkStack extends cdk.Stack {
 			timeout: Duration.seconds(512),
 			memorySize: 1024
 		});
+
 		const nylasSqsLambda = new lambda.Function(this, "NylasSqsLambdaHandler", {
 			runtime: Runtime.NODEJS_18_X,
 			code: lambda.Code.fromAsset(join(__dirname, `/../dist/handlers/nylasSqs`)),
@@ -27,6 +28,7 @@ export class LirctekApiServiceCdkStack extends cdk.Stack {
 			timeout: Duration.seconds(512),
 			memorySize: 1024
 		});
+
 		const macropointLambda = new lambda.Function(this, "MacropointLambdaHandler", {
 			runtime: Runtime.NODEJS_18_X,
 			code: lambda.Code.fromAsset(join(__dirname, `/../dist/handlers/macropoint`)),
@@ -34,6 +36,7 @@ export class LirctekApiServiceCdkStack extends cdk.Stack {
 			timeout: Duration.seconds(512),
 			memorySize: 1024
 		});
+
 		const relayPaymentsLambda = new lambda.Function(this, "relayPaymentsLambdaHandler", {
 			runtime: Runtime.NODEJS_18_X,
 			code: lambda.Code.fromAsset(join(__dirname, `/../dist/handlers/relayPayments`)),
@@ -41,6 +44,23 @@ export class LirctekApiServiceCdkStack extends cdk.Stack {
 			timeout: Duration.seconds(512),
 			memorySize: 1024
 		});
+
+		const truckerToolsLambda = new lambda.Function(this, "truckerToolsLambdaHandler", {
+			runtime: Runtime.NODEJS_18_X,
+			code: lambda.Code.fromAsset(join(__dirname, `/../dist/handlers/truckerTools`)),
+			handler: 'index.handler',
+			timeout: Duration.seconds(512),
+			memorySize: 1024
+		});
+
+		const orderFulLambda = new lambda.Function(this, "orderFulLambdaHandler", {
+			runtime: Runtime.NODEJS_18_X,
+			code: lambda.Code.fromAsset(join(__dirname, `/../dist/handlers/orderFul`)),
+			handler: 'index.handler',
+			timeout: Duration.seconds(512),
+			memorySize: 1024
+		});
+
 		const appConfigPolicyStatement = new iam.PolicyStatement({
 			actions:[
 				"appConfig:GetLatestConfiguration",
@@ -67,7 +87,15 @@ export class LirctekApiServiceCdkStack extends cdk.Stack {
 			iamPolicy
 		);
 
+		truckerToolsLambda.role?.attachInlinePolicy(
+			iamPolicy
+		);
+
 		nylasSqsLambda.role?.attachInlinePolicy(
+			iamPolicy
+		);
+
+		orderFulLambda.role?.attachInlinePolicy(
 			iamPolicy
 		);
 
@@ -95,8 +123,18 @@ export class LirctekApiServiceCdkStack extends cdk.Stack {
 			authorizationType: apigw.AuthorizationType.NONE,
 		});
 
+		const truckerToolsResource = apiService.root.addResource('truckerTools');
+		truckerToolsResource.addMethod('POST', new apigw.LambdaIntegration(truckerToolsLambda, {}), {
+			authorizationType: apigw.AuthorizationType.NONE,
+		});
+
 		const nylasSqsResource = apiService.root.addResource('nylasSqs');
 		nylasSqsResource.addMethod('POST', new apigw.LambdaIntegration(nylasSqsLambda, {}), {
+			authorizationType: apigw.AuthorizationType.NONE,
+		});
+
+		const orderFulSqsResource = apiService.root.addResource('orderFul');
+		orderFulSqsResource.addMethod('POST', new apigw.LambdaIntegration(orderFulLambda, {}), {
 			authorizationType: apigw.AuthorizationType.NONE,
 		});
 

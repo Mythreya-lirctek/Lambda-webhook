@@ -141,7 +141,7 @@ export class RelayPayments {
             }
         });
         if (text && request.id) {
-            text += ` UpdatedAt = UTC_TIMESTAMP, ExecutionEndTime = UTC_TIMESTAMP`;
+            text += ` UpdatedAt = UTC_TIMESTAMP`;
             return this.dataBase.query(`
                 UPDATE
                     fcissuelog
@@ -170,7 +170,7 @@ export class RelayPayments {
             }
         });
         if (text && request.id) {
-            text += ` UpdatedAt = UTC_TIMESTAMP, ExecutionEndTime = UTC_TIMESTAMP`;
+            text += ` UpdatedAt = UTC_TIMESTAMP`;
             return this.dataBase.query(`
                 UPDATE
                     fcissuelog

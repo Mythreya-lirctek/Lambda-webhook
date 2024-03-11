@@ -3,16 +3,20 @@ import { Nylas } from '../../../services/nylas/nylas';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import console from "console";
 
-exports.handler = async function (event: APIGatewayProxyEvent) {
+exports.handler = async function (event: any) {
     try {
 		// Load configuration
 		await ConfigService.loadConfig();
         const nylas = new Nylas()
-        const requestBody: any = event.body
-        console.log(requestBody)
-        const response: any = await nylas.handleResponseData(requestBody)
-        console.log(response, 'Response')
+        for (const data of event.Records){
+            const requestBody = data.body;
+            const request = JSON.parse(requestBody) || {};
+            console.log(request)
+            const response: any = await nylas.handleResponseData(request)
+            console.log(response, 'Response')
+        }
         return { statusCode: 200 };
+
 
     } catch(ex: any) {
         console.log(ex, 'Error')

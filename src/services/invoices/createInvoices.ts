@@ -92,6 +92,7 @@ export class CreateInvoices {
 				}
 
 				for (const doc of documents) {
+					console.log(doc)
 					if (doc.url) {
 						files.push({url: doc.url, name: doc.fileName})
 						invoice.fileNames += `;${doc.fileName}`;
@@ -117,6 +118,7 @@ export class CreateInvoices {
 				}
 
 				for (const doc of documents) {
+					console.log(doc)
 					if (doc.url){
 						files.push({ url : doc.url, name : doc.fileName})
 						invoice.fileNames += `;${doc.fileName}`;
@@ -157,6 +159,7 @@ export class CreateInvoices {
 
 				if (invoice.otherDocuments === 1) {
 					for (const doc of documents) {
+						console.log(doc)
 						if (doc.url) {
 							files.push({url: doc.url, name: doc.fileName})
 							invoice.fileNames += `;${doc.fileName}`;
@@ -183,7 +186,7 @@ export class CreateInvoices {
 					}
 				}
 
-			} else {
+			} else if (invoice.type === 4) {
 
 				const files = [];
 				if (invoiceUrl.key) {
@@ -191,6 +194,7 @@ export class CreateInvoices {
 				}
 
 				for (const doc of documents) {
+					console.log(doc)
 					if (doc.url) {
 						files.push({url: doc.url, name: doc.fileName})
 						invoice.fileNames += `;${doc.fileName}`;
@@ -208,6 +212,10 @@ export class CreateInvoices {
 					}
 				}
 
+			} else {
+				if (invoiceUrl.key) {
+					invoice.files.push({ url : invoiceUrl.key, name: invoice.loadNumber})
+				}
 			}
 		}
 

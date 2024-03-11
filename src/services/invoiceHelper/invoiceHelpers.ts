@@ -64,8 +64,8 @@ export class InvoiceHelpers {
 				${req.emailData ? this.dataBase.connection.escape(req.emailData) : null},
 				${req.fileNames ? this.dataBase.connection.escape(req.fileNames) : null},
                 ${req.isMerged},   
-				${moment.utc().unix()},
-				${moment.utc().unix()},
+				UTC_TIMESTAMP,
+				UTC_TIMESTAMP,
 				${req.userId}
 			)
 		`);
@@ -200,7 +200,7 @@ export class InvoiceHelpers {
     formatDate = (date: any, format: any) => {
         try {
             if (date && date !== '') {
-                return moment(date, moment.ISO_8601).format(format)
+                return moment(date).format(format)
             }
             else {
                 return ''
